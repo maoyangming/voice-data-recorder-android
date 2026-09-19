@@ -20,3 +20,4 @@ android/captures/
 .vscode/
 *.ipr
 *.iws
+assets/vosk-model-small-cn.zip

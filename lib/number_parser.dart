@@ -1,11 +1,18 @@
 import 'dart:math';
 
 class NumberParser {
-  // Chinese digit words
+  // Chinese digit words — includes common ASR homophones
   static const Map<String, double> _cnDigits = {
-    '零': 0, '一': 1, '二': 2, '三': 3, '四': 4,
-    '五': 5, '六': 6, '七': 7, '八': 8, '九': 9,
-    '两': 2,
+    '零': 0, '〇': 0, '哦': 0, '噢': 0,
+    '一': 1, '幺': 1, '壹': 1,
+    '二': 2, '两': 2, '俩': 2,
+    '三': 3,
+    '四': 4, '是': 4, '事': 4, '室': 4, '市': 4,
+    '五': 5,
+    '六': 6,
+    '七': 7, '期': 7, '起': 7,
+    '八': 8, '吧': 8,
+    '九': 9, '就': 9, '久': 9,
   };
 
   static const Map<String, int> _cnUnits = {
@@ -25,25 +32,29 @@ class NumberParser {
   static List<String> extractNumbers(String text) {
     final results = <String>[];
 
-    // First try Arabic numerals with optional decimal/negative
-    final arabicPattern = RegExp(r'-?\d+(?:[.,]\d+)?');
-    for (final m in arabicPattern.allMatches(text)) {
-      final s = m.group(0)!.replaceAll(',', '.');
+    // Strip spaces so "三 点 一 四" → "三点一四", "3 . 14" → "3.14"
+    final compact = text.replaceAll(' ', '');
+
+    // First try Arabic numerals (also handles "3点14" mixed form)
+    final arabicPattern = RegExp(r'-?\d+(?:[.,点]\d+)?');
+    for (final m in arabicPattern.allMatches(compact)) {
+      final s = m.group(0)!.replaceAll(',', '.').replaceAll('点', '.');
       results.add(s);
     }
 
     if (results.isNotEmpty) return results;
 
     // Fall back to converting Chinese number words
-    final converted = _convertChineseNumbers(text);
+    final converted = _convertChineseNumbers(compact);
     if (converted != null) results.add(converted);
 
     return results;
   }
 
   static String? _convertChineseNumbers(String text) {
-    // Handle decimal: 三点四五 → 3.45
-    final decimalRe = RegExp(r'([零一二三四五六七八九两]+)点([零一二三四五六七八九]+)');
+    // Handle decimal: 三点四五 → 3.45  (spaces already stripped by caller)
+    // Character class also covers common ASR homophones (是≈四, 就≈九, etc.)
+    final decimalRe = RegExp(r'([零〇一幺壹二两俩三四五六七八九]+)点([零〇哦噢一幺二两三四是事室市五六七期起八吧九就久]+)');
     final dm = decimalRe.firstMatch(text);
     if (dm != null) {
       final intPart = _chineseToInt(dm.group(1)!);
